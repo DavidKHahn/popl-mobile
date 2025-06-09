@@ -1,15 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { Button, TextInput, Text, Chip, HelperText, Snackbar } from 'react-native-paper';
+import { Button, TextInput, Text, Chip, HelperText, Snackbar, Switch, ActivityIndicator, SegmentedButtons, Menu, Divider } from 'react-native-paper';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { leadsApi } from '../api/leadsApi';
-import { Lead } from '../types';
+import { formConfigApi } from '../api/formConfigApi';
+import { Lead, FormConfig, FormFieldConfig } from '../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'NewLead'>;
 
 export default function NewLeadScreen({ navigation }: Props) {
+  // Form type state
+  const [formType, setFormType] = useState<'default' | 'custom'>('default');
+  
   // Form state
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -20,6 +24,10 @@ export default function NewLeadScreen({ navigation }: Props) {
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   
+  // Custom form fields state
+  const [customFields, setCustomFields] = useState<Record<string, string>>({});
+  const [selectMenuVisible, setSelectMenuVisible] = useState<Record<string, boolean>>({});
+  
   // Validation state
   const [errors, setErrors] = useState<Record<string, string>>({});
   
@@ -29,6 +37,16 @@ export default function NewLeadScreen({ navigation }: Props) {
 
   // Access the QueryClient
   const queryClient = useQueryClient();
+
+  // Fetch form configuration
+  const { data: formConfig, isLoading: isLoadingConfig, isError: isErrorConfig } = useQuery({
+    queryKey: ['form-config'],
+    queryFn: async () => {
+      const response = await formConfigApi.getFormConfig();
+      return response.data;
+    },
+    enabled: formType === 'custom', // Only fetch when custom form is selected
+  });
 
   // Create lead mutation
   const createLeadMutation = useMutation({
@@ -52,6 +70,7 @@ export default function NewLeadScreen({ navigation }: Props) {
           tags: newLead.tags || [],
           notes: newLead.notes || '',
           createdAt: new Date().toISOString(),
+          ...customFields, // Add custom fields
         };
         
         queryClient.setQueryData(['leads'], [...previousLeads, optimisticLead]);
@@ -93,10 +112,27 @@ export default function NewLeadScreen({ navigation }: Props) {
     setTags(tags.filter(tag => tag !== tagToRemove));
   };
 
+  // Handle custom field change
+  const handleCustomFieldChange = (key: string, value: string) => {
+    setCustomFields(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  // Toggle select menu visibility
+  const toggleSelectMenu = (fieldId: string) => {
+    setSelectMenuVisible(prev => ({
+      ...prev,
+      [fieldId]: !prev[fieldId]
+    }));
+  };
+
   // Validate form
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
     
+    // Validate default fields
     if (!name.trim()) {
       newErrors.name = 'Name is required';
     }
@@ -109,6 +145,15 @@ export default function NewLeadScreen({ navigation }: Props) {
     
     if (!company.trim()) {
       newErrors.company = 'Company is required';
+    }
+    
+    // Validate custom fields if using custom form
+    if (formType === 'custom' && formConfig) {
+      formConfig.fields.forEach(field => {
+        if (field.required && !customFields[field.key] && !['name', 'email', 'company'].includes(field.key)) {
+          newErrors[field.key] = `${field.label} is required`;
+        }
+      });
     }
     
     setErrors(newErrors);
@@ -128,19 +173,142 @@ export default function NewLeadScreen({ navigation }: Props) {
         tags,
       };
       
+      // Add custom fields if using custom form
+      if (formType === 'custom') {
+        Object.entries(customFields).forEach(([key, value]) => {
+          if (value) {
+            newLead[key] = value;
+          }
+        });
+      }
+      
       createLeadMutation.mutate(newLead);
+    }
+  };
+
+  // Render a form field based on its configuration
+  const renderFormField = (field: FormFieldConfig) => {
+    // Skip fields that are handled separately in the default form
+    if (['name', 'email', 'phone', 'company', 'title', 'notes'].includes(field.key)) {
+      return null;
+    }
+
+    switch (field.type) {
+      case 'text':
+      case 'email':
+      case 'phone':
+        return (
+          <View key={field.id}>
+            <TextInput
+              label={`${field.label}${field.required ? ' *' : ''}`}
+              mode="outlined"
+              value={customFields[field.key] || ''}
+              onChangeText={(value) => handleCustomFieldChange(field.key, value)}
+              placeholder={field.placeholder}
+              keyboardType={field.type === 'email' ? 'email-address' : field.type === 'phone' ? 'phone-pad' : 'default'}
+              error={!!errors[field.key]}
+              style={styles.input}
+            />
+            {errors[field.key] && <HelperText type="error">{errors[field.key]}</HelperText>}
+          </View>
+        );
+      case 'multiline':
+        return (
+          <View key={field.id}>
+            <TextInput
+              label={`${field.label}${field.required ? ' *' : ''}`}
+              mode="outlined"
+              value={customFields[field.key] || ''}
+              onChangeText={(value) => handleCustomFieldChange(field.key, value)}
+              placeholder={field.placeholder}
+              multiline
+              numberOfLines={4}
+              error={!!errors[field.key]}
+              style={styles.input}
+            />
+            {errors[field.key] && <HelperText type="error">{errors[field.key]}</HelperText>}
+          </View>
+        );
+      case 'select':
+        return (
+          <View key={field.id}>
+            <Menu
+              visible={!!selectMenuVisible[field.id]}
+              onDismiss={() => toggleSelectMenu(field.id)}
+              anchor={
+                <TextInput
+                  label={`${field.label}${field.required ? ' *' : ''}`}
+                  mode="outlined"
+                  value={customFields[field.key] || ''}
+                  onChangeText={(value) => handleCustomFieldChange(field.key, value)}
+                  placeholder="Select an option"
+                  error={!!errors[field.key]}
+                  style={styles.input}
+                  right={<TextInput.Icon icon="menu-down" onPress={() => toggleSelectMenu(field.id)} />}
+                  showSoftInputOnFocus={false}
+                  onPressIn={() => toggleSelectMenu(field.id)}
+                />
+              }
+            >
+              {field.options?.map((option) => (
+                <Menu.Item
+                  key={option}
+                  onPress={() => {
+                    handleCustomFieldChange(field.key, option);
+                    toggleSelectMenu(field.id);
+                  }}
+                  title={option}
+                />
+              ))}
+            </Menu>
+            {errors[field.key] && <HelperText type="error">{errors[field.key]}</HelperText>}
+          </View>
+        );
+      default:
+        return null;
     }
   };
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={100}
     >
       <ScrollView style={styles.scrollView}>
         <View style={styles.formContainer}>
-          {/* Basic Information */}
-          <Text style={styles.sectionTitle}>Basic Information</Text>
+          {/* Form Type Toggle */}
+          <View style={styles.formTypeContainer}>
+            <Text style={styles.formTypeLabel}>Form Type:</Text>
+            <SegmentedButtons
+              value={formType}
+              onValueChange={(value) => setFormType(value as 'default' | 'custom')}
+              buttons={[
+                { value: 'default', label: 'Default' },
+                { value: 'custom', label: 'Custom' }
+              ]}
+              style={styles.segmentedButtons}
+            />
+          </View>
+          
+          {formType === 'custom' && isLoadingConfig && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" />
+              <Text style={styles.loadingText}>Loading custom form...</Text>
+            </View>
+          )}
+          
+          {formType === 'custom' && isErrorConfig && (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>Failed to load custom form. Using default form instead.</Text>
+              <Button mode="contained" onPress={() => setFormType('default')} style={styles.errorButton}>
+                Switch to Default Form
+              </Button>
+            </View>
+          )}
+          
+          {/* Personal Information */}
+          <Text style={styles.sectionTitle}>Personal Information</Text>
           
           <TextInput
             label="Name *"
@@ -192,6 +360,14 @@ export default function NewLeadScreen({ navigation }: Props) {
             onChangeText={setTitle}
             style={styles.input}
           />
+          
+          {/* Custom Fields */}
+          {formType === 'custom' && formConfig && (
+            <>
+              <Text style={styles.sectionTitle}>Additional Information</Text>
+              {formConfig.fields.map(field => renderFormField(field))}
+            </>
+          )}
           
           {/* Tags */}
           <Text style={styles.sectionTitle}>Tags</Text>
@@ -292,6 +468,21 @@ const styles = StyleSheet.create({
   formContainer: {
     padding: 16,
   },
+  formTypeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  formTypeLabel: {
+    fontSize: 16,
+    marginRight: 16,
+  },
+  segmentedButtons: {
+    flex: 1,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -331,5 +522,28 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     paddingVertical: 6,
+  },
+  loadingContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+  },
+  errorContainer: {
+    padding: 20,
+    alignItems: 'center',
+    backgroundColor: '#ffebee',
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: '#d32f2f',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  errorButton: {
+    marginTop: 10,
   },
 });
