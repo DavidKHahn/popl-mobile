@@ -7,7 +7,11 @@
       "company": "Acme Corporation",
       "title": "Chief Technology Officer",
       "phone": "+1 (555) 123-4567",
-      "tags": ["enterprise", "tech", "high-priority"],
+      "tags": [
+        "enterprise",
+        "tech",
+        "high-priority"
+      ],
       "notes": "Interested in enterprise solution",
       "createdAt": "2024-03-15T08:30:00Z"
     },
@@ -18,7 +22,10 @@
       "company": "TechStart",
       "title": "Founder",
       "phone": "+1 (555) 987-6543",
-      "tags": ["startup", "referral"],
+      "tags": [
+        "startup",
+        "referral"
+      ],
       "notes": "Startup looking for scalable solutions",
       "createdAt": "2024-03-18T10:20:00Z"
     },
@@ -29,7 +36,10 @@
       "company": "Global Technologies",
       "title": "VP of Sales",
       "phone": "+1 (555) 234-5678",
-      "tags": ["enterprise", "sales"],
+      "tags": [
+        "enterprise",
+        "sales"
+      ],
       "notes": "Follow up needed on pricing discussion",
       "createdAt": "2024-03-10T09:15:00Z"
     },
@@ -40,7 +50,10 @@
       "company": "Innovate Co",
       "title": "Director of Operations",
       "phone": "+1 (555) 345-6789",
-      "tags": ["operations", "mid-market"],
+      "tags": [
+        "operations",
+        "mid-market"
+      ],
       "notes": "Met at TechConf 2024",
       "createdAt": "2024-03-05T15:45:00Z"
     },
@@ -51,7 +64,10 @@
       "company": "FutureSoft",
       "title": "Lead Developer",
       "phone": "+1 (555) 456-7890",
-      "tags": ["technical", "api-integration"],
+      "tags": [
+        "technical",
+        "api-integration"
+      ],
       "notes": "Requested demo of API integration",
       "createdAt": "2024-03-19T11:00:00Z"
     },
@@ -62,7 +78,10 @@
       "company": "CloudScape",
       "title": "Product Manager",
       "phone": "+1 (555) 567-8901",
-      "tags": ["product", "mobile"],
+      "tags": [
+        "product",
+        "mobile"
+      ],
       "notes": "Interested in mobile solutions",
       "createdAt": "2024-03-12T13:30:00Z"
     },
@@ -73,7 +92,10 @@
       "company": "NextStep Education",
       "title": "CEO",
       "phone": "+1 (555) 678-9012",
-      "tags": ["education", "enterprise"],
+      "tags": [
+        "education",
+        "enterprise"
+      ],
       "notes": "Looking for educational integration",
       "createdAt": "2024-03-08T16:20:00Z"
     },
@@ -84,7 +106,10 @@
       "company": "Digital Edge",
       "title": "Marketing Director",
       "phone": "+1 (555) 789-0123",
-      "tags": ["marketing", "analytics"],
+      "tags": [
+        "marketing",
+        "analytics"
+      ],
       "notes": "Interested in analytics features",
       "createdAt": "2024-03-20T09:00:00Z"
     },
@@ -95,7 +120,12 @@
       "company": null,
       "title": "",
       "phone": "12345",
-      "tags": ["", null, "  TEST  ", "test"],
+      "tags": [
+        "",
+        null,
+        "  TEST  ",
+        "test"
+      ],
       "notes": null,
       "createdAt": "invalid-date"
     },
@@ -117,6 +147,16 @@
       ],
       "notes": "Initial meeting conducted on March 15th with the following attendees: John (CEO), Sarah (CTO), Mike (CFO), and entire board of directors. Client expressed strong interest in our enterprise solution, particularly the advanced analytics module. Key points discussed:\n\n1. Need for seamless integration with their legacy systems (SAP, Oracle, custom in-house solutions)\n2. Compliance requirements: SOC2, GDPR, CCPA, ISO27001\n3. Custom reporting requirements for 15 different departments\n4. Multi-language support needed for 12 regional offices\n5. Complex approval workflow with 7 stages\n\nBudget range: $500k-$1M\nTimeline: Must go live before Q4\n\nFollow-up tasks:\n- Schedule technical deep dive\n- Prepare custom demo for board\n- Draft preliminary project timeline\n- Coordinate with legal for compliance review\n- Engage solution architects for infrastructure planning\n\nRisks:\n* Complex organizational structure\n* Multiple decision makers\n* Tight deadline\n* Legacy system constraints",
       "createdAt": "2024-03-01T00:00:00Z"
+    },
+    {
+      "id": "7b44",
+      "name": "David",
+      "email": "dtest@gmail.com",
+      "phone": "3231002000",
+      "company": "Popl",
+      "title": "Sr React Native Engineer",
+      "notes": "asdf",
+      "tags": []
     }
   ]
 }
