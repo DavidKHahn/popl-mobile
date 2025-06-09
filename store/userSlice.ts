@@ -37,8 +37,12 @@ export const userSlice = createSlice({
       state.email = null;
       // We keep preferences even after logout
     },
-    toggleDarkMode: (state) => {
-      state.preferences.darkMode = !state.preferences.darkMode;
+    toggleDarkMode: (state, action: PayloadAction<boolean | undefined>) => {
+      if (action.payload !== undefined) {
+        state.preferences.darkMode = action.payload;
+      } else {
+        state.preferences.darkMode = !state.preferences.darkMode;
+      }
     },
     toggleNotifications: (state) => {
       state.preferences.notificationsEnabled = !state.preferences.notificationsEnabled;
