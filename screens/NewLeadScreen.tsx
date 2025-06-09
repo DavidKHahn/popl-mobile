@@ -7,12 +7,18 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { leadsApi } from '../api/leadsApi';
 import { formConfigApi } from '../api/formConfigApi';
 import { Lead, FormConfig, FormFieldConfig } from '../types';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState } from '../store';
+import { setDefaultFormType } from '../store/userSlice';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'NewLead'>;
 
 export default function NewLeadScreen({ navigation }: Props) {
+  const dispatch = useDispatch();
+  const { defaultFormType } = useSelector((state: RootState) => state.user.preferences);
+  
   // Form type state
-  const [formType, setFormType] = useState<'default' | 'custom'>('default');
+  const [formType, setFormType] = useState<'default' | 'custom'>(defaultFormType);
   
   // Form state
   const [name, setName] = useState('');
@@ -128,30 +134,28 @@ export default function NewLeadScreen({ navigation }: Props) {
     }));
   };
 
+  // Handle form type change and update preference in Redux
+  const handleFormTypeChange = (value: 'default' | 'custom') => {
+    setFormType(value);
+    dispatch(setDefaultFormType(value));
+  };
+
   // Validate form
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
     
-    // Validate default fields
-    if (!name.trim()) {
-      newErrors.name = 'Name is required';
-    }
+    // Validate required fields
+    if (!name.trim()) newErrors.name = 'Name is required';
+    if (!email.trim()) newErrors.email = 'Email is required';
+    else if (!/\S+@\S+\.\S+/.test(email)) newErrors.email = 'Email is invalid';
     
-    if (!email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = 'Email is invalid';
-    }
-    
-    if (!company.trim()) {
-      newErrors.company = 'Company is required';
-    }
+    if (!phone.trim()) newErrors.phone = 'Phone is required';
     
     // Validate custom fields if using custom form
     if (formType === 'custom' && formConfig) {
       formConfig.fields.forEach(field => {
-        if (field.required && !customFields[field.key] && !['name', 'email', 'company'].includes(field.key)) {
-          newErrors[field.key] = `${field.label} is required`;
+        if (field.required && !customFields[field.id]) {
+          newErrors[field.id] = `${field.label} is required`;
         }
       });
     }
@@ -162,108 +166,144 @@ export default function NewLeadScreen({ navigation }: Props) {
 
   // Handle form submission
   const handleSubmit = () => {
-    if (validateForm()) {
-      const newLead: Partial<Lead> = {
-        name,
-        email,
-        phone,
-        company,
-        title,
-        notes,
-        tags,
-      };
-      
-      // Add custom fields if using custom form
-      if (formType === 'custom') {
-        Object.entries(customFields).forEach(([key, value]) => {
-          if (value) {
-            newLead[key] = value;
-          }
-        });
-      }
-      
-      createLeadMutation.mutate(newLead);
+    if (!validateForm()) {
+      setSnackbarMessage('Please fix the errors in the form');
+      setSnackbarVisible(true);
+      return;
     }
+    
+    const newLead: Partial<Lead> = {
+      name,
+      email,
+      phone,
+      company,
+      title,
+      notes,
+      tags,
+    };
+    
+    // Add custom fields if using custom form
+    if (formType === 'custom') {
+      Object.entries(customFields).forEach(([key, value]) => {
+        if (value) {
+          (newLead as any)[key] = value;
+        }
+      });
+    }
+    
+    createLeadMutation.mutate(newLead);
   };
 
   // Render a form field based on its configuration
   const renderFormField = (field: FormFieldConfig) => {
-    // Skip fields that are handled separately in the default form
-    if (['name', 'email', 'phone', 'company', 'title', 'notes'].includes(field.key)) {
-      return null;
-    }
-
+    const value = customFields[field.id] || '';
+    const error = errors[field.id] || '';
+    
     switch (field.type) {
       case 'text':
+        return (
+          <View key={field.id} style={styles.fieldContainer}>
+            <TextInput
+              label={field.label}
+              mode="outlined"
+              value={value}
+              onChangeText={(text) => handleCustomFieldChange(field.id, text)}
+              error={!!error}
+              style={styles.input}
+            />
+            {!!error && <HelperText type="error">{error}</HelperText>}
+          </View>
+        );
+        
       case 'email':
+        return (
+          <View key={field.id} style={styles.fieldContainer}>
+            <TextInput
+              label={field.label}
+              mode="outlined"
+              value={value}
+              onChangeText={(text) => handleCustomFieldChange(field.id, text)}
+              keyboardType="email-address"
+              error={!!error}
+              style={styles.input}
+            />
+            {!!error && <HelperText type="error">{error}</HelperText>}
+          </View>
+        );
+        
       case 'phone':
         return (
-          <View key={field.id}>
+          <View key={field.id} style={styles.fieldContainer}>
             <TextInput
-              label={`${field.label}${field.required ? ' *' : ''}`}
+              label={field.label}
               mode="outlined"
-              value={customFields[field.key] || ''}
-              onChangeText={(value) => handleCustomFieldChange(field.key, value)}
-              placeholder={field.placeholder}
-              keyboardType={field.type === 'email' ? 'email-address' : field.type === 'phone' ? 'phone-pad' : 'default'}
-              error={!!errors[field.key]}
+              value={value}
+              onChangeText={(text) => handleCustomFieldChange(field.id, text)}
+              keyboardType="phone-pad"
+              error={!!error}
               style={styles.input}
             />
-            {errors[field.key] && <HelperText type="error">{errors[field.key]}</HelperText>}
+            {!!error && <HelperText type="error">{error}</HelperText>}
           </View>
         );
+        
       case 'multiline':
         return (
-          <View key={field.id}>
+          <View key={field.id} style={styles.fieldContainer}>
             <TextInput
-              label={`${field.label}${field.required ? ' *' : ''}`}
+              label={field.label}
               mode="outlined"
-              value={customFields[field.key] || ''}
-              onChangeText={(value) => handleCustomFieldChange(field.key, value)}
-              placeholder={field.placeholder}
+              value={value}
+              onChangeText={(text) => handleCustomFieldChange(field.id, text)}
               multiline
-              numberOfLines={4}
-              error={!!errors[field.key]}
+              numberOfLines={3}
+              error={!!error}
               style={styles.input}
             />
-            {errors[field.key] && <HelperText type="error">{errors[field.key]}</HelperText>}
+            {!!error && <HelperText type="error">{error}</HelperText>}
           </View>
         );
+        
       case 'select':
         return (
-          <View key={field.id}>
+          <View key={field.id} style={styles.fieldContainer}>
             <Menu
-              visible={!!selectMenuVisible[field.id]}
+              visible={selectMenuVisible[field.id] || false}
               onDismiss={() => toggleSelectMenu(field.id)}
               anchor={
                 <TextInput
-                  label={`${field.label}${field.required ? ' *' : ''}`}
+                  label={field.label}
                   mode="outlined"
-                  value={customFields[field.key] || ''}
-                  onChangeText={(value) => handleCustomFieldChange(field.key, value)}
-                  placeholder="Select an option"
-                  error={!!errors[field.key]}
+                  value={value}
+                  onChangeText={(text) => handleCustomFieldChange(field.id, text)}
+                  error={!!error}
                   style={styles.input}
-                  right={<TextInput.Icon icon="menu-down" onPress={() => toggleSelectMenu(field.id)} />}
+                  right={
+                    <TextInput.Icon
+                      icon="menu-down"
+                      onPress={() => toggleSelectMenu(field.id)}
+                    />
+                  }
                   showSoftInputOnFocus={false}
                   onPressIn={() => toggleSelectMenu(field.id)}
                 />
               }
             >
-              {field.options?.map((option) => (
+              {field.options?.map((option, index) => (
                 <Menu.Item
-                  key={option}
+                  key={index}
                   onPress={() => {
-                    handleCustomFieldChange(field.key, option);
+                    handleCustomFieldChange(field.id, option);
                     toggleSelectMenu(field.id);
                   }}
                   title={option}
                 />
               ))}
             </Menu>
-            {errors[field.key] && <HelperText type="error">{errors[field.key]}</HelperText>}
+            {!!error && <HelperText type="error">{error}</HelperText>}
           </View>
         );
+        
       default:
         return null;
     }
@@ -277,12 +317,12 @@ export default function NewLeadScreen({ navigation }: Props) {
     >
       <ScrollView style={styles.scrollView}>
         <View style={styles.formContainer}>
-          {/* Form Type Toggle */}
+          {/* Form Type Selector */}
           <View style={styles.formTypeContainer}>
             <Text style={styles.formTypeLabel}>Form Type:</Text>
             <SegmentedButtons
               value={formType}
-              onValueChange={(value) => setFormType(value as 'default' | 'custom')}
+              onValueChange={(value) => handleFormTypeChange(value as 'default' | 'custom')}
               buttons={[
                 { value: 'default', label: 'Default' },
                 { value: 'custom', label: 'Custom' }
@@ -291,37 +331,45 @@ export default function NewLeadScreen({ navigation }: Props) {
             />
           </View>
           
+          {/* Loading State for Custom Form */}
           {formType === 'custom' && isLoadingConfig && (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" />
-              <Text style={styles.loadingText}>Loading custom form...</Text>
+              <Text style={styles.loadingText}>Loading form configuration...</Text>
             </View>
           )}
           
+          {/* Error State for Custom Form */}
           {formType === 'custom' && isErrorConfig && (
             <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>Failed to load custom form. Using default form instead.</Text>
-              <Button mode="contained" onPress={() => setFormType('default')} style={styles.errorButton}>
-                Switch to Default Form
+              <Text style={styles.errorText}>
+                Failed to load custom form configuration.
+              </Text>
+              <Button
+                mode="contained"
+                onPress={() => queryClient.invalidateQueries({ queryKey: ['form-config'] })}
+                style={styles.errorButton}
+              >
+                Retry
               </Button>
             </View>
           )}
           
-          {/* Personal Information */}
-          <Text style={styles.sectionTitle}>Personal Information</Text>
+          {/* Basic Information - Always shown */}
+          <Text style={styles.sectionTitle}>Basic Information</Text>
           
           <TextInput
-            label="Name *"
+            label="Name"
             mode="outlined"
             value={name}
             onChangeText={setName}
             error={!!errors.name}
             style={styles.input}
           />
-          {errors.name && <HelperText type="error">{errors.name}</HelperText>}
+          {!!errors.name && <HelperText type="error">{errors.name}</HelperText>}
           
           <TextInput
-            label="Email *"
+            label="Email"
             mode="outlined"
             value={email}
             onChangeText={setEmail}
@@ -329,7 +377,7 @@ export default function NewLeadScreen({ navigation }: Props) {
             error={!!errors.email}
             style={styles.input}
           />
-          {errors.email && <HelperText type="error">{errors.email}</HelperText>}
+          {!!errors.email && <HelperText type="error">{errors.email}</HelperText>}
           
           <TextInput
             label="Phone"
@@ -337,24 +385,24 @@ export default function NewLeadScreen({ navigation }: Props) {
             value={phone}
             onChangeText={setPhone}
             keyboardType="phone-pad"
+            error={!!errors.phone}
             style={styles.input}
           />
+          {!!errors.phone && <HelperText type="error">{errors.phone}</HelperText>}
           
           {/* Company Information */}
           <Text style={styles.sectionTitle}>Company Information</Text>
           
           <TextInput
-            label="Company *"
+            label="Company"
             mode="outlined"
             value={company}
             onChangeText={setCompany}
-            error={!!errors.company}
             style={styles.input}
           />
-          {errors.company && <HelperText type="error">{errors.company}</HelperText>}
           
           <TextInput
-            label="Title"
+            label="Job Title"
             mode="outlined"
             value={title}
             onChangeText={setTitle}
@@ -362,7 +410,7 @@ export default function NewLeadScreen({ navigation }: Props) {
           />
           
           {/* Custom Fields */}
-          {formType === 'custom' && formConfig && (
+          {formType === 'custom' && formConfig && !isLoadingConfig && !isErrorConfig && (
             <>
               <Text style={styles.sectionTitle}>Additional Information</Text>
               {formConfig.fields.map(field => renderFormField(field))}
@@ -491,6 +539,9 @@ const styles = StyleSheet.create({
   },
   input: {
     marginBottom: 12,
+  },
+  fieldContainer: {
+    marginBottom: 8,
   },
   tagInputContainer: {
     flexDirection: 'row',

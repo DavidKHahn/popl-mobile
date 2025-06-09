@@ -1,11 +1,13 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { FlatList, View, StyleSheet, ActivityIndicator } from 'react-native';
-import { FAB, List, Searchbar, Text, Button, Menu, Divider } from 'react-native-paper';
+import { FAB, List, Searchbar, Text, Button, Menu, Divider, IconButton } from 'react-native-paper';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation';
 import { Lead } from '../types';
 import { useQuery } from '@tanstack/react-query';
 import { leadsApi } from '../api/leadsApi';
+import { useSelector } from 'react-redux';
+import { RootState } from '../store';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'LeadList'>;
 
@@ -18,6 +20,22 @@ export default function LeadListScreen({ navigation }: Props) {
   const [sortBy, setSortBy] = useState<SortOption>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [menuVisible, setMenuVisible] = useState(false);
+  
+  // Get user from Redux store
+  const user = useSelector((state: RootState) => state.user);
+
+  // Set up header right button
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <IconButton
+          icon="account-circle"
+          size={24}
+          onPress={() => navigation.navigate('Profile')}
+        />
+      ),
+    });
+  }, [navigation]);
 
   // Fetch leads using React Query
   const { 
@@ -91,6 +109,13 @@ export default function LeadListScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
+      {/* Welcome message */}
+      {user.username && (
+        <View style={styles.welcomeContainer}>
+          <Text style={styles.welcomeText}>Welcome, {user.username}!</Text>
+        </View>
+      )}
+      
       {/* Search bar */}
       <Searchbar
         placeholder="Search leads..."
@@ -188,6 +213,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 16,
+  },
+  welcomeContainer: {
+    marginBottom: 16,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  welcomeText: {
+    fontSize: 16,
+    fontWeight: '500',
   },
   searchBar: {
     marginBottom: 8,
