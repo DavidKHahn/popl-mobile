@@ -8,6 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import { leadsApi } from '../api/leadsApi';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store';
+import { useDebounce } from '../hooks/useDebounce';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'LeadList'>;
 
@@ -20,6 +21,9 @@ export default function LeadListScreen({ navigation }: Props) {
   const [sortBy, setSortBy] = useState<SortOption>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [menuVisible, setMenuVisible] = useState(false);
+  
+  // Debounce search query to prevent excessive re-renders
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
   
   // Get user from Redux store
   const user = useSelector((state: RootState) => state.user);
@@ -55,11 +59,11 @@ export default function LeadListScreen({ navigation }: Props) {
   const filteredAndSortedLeads = useMemo(() => {
     if (!leads) return [];
     
-    // Filter by search query
-    const filtered = searchQuery
+    // Filter by debounced search query
+    const filtered = debouncedSearchQuery
       ? leads.filter(lead => 
-          lead.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          lead.email.toLowerCase().includes(searchQuery.toLowerCase())
+          lead.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+          lead.email.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
         )
       : leads;
     
@@ -73,7 +77,7 @@ export default function LeadListScreen({ navigation }: Props) {
         return sortDirection === 'asc' ? Number(a.id) - Number(b.id) : Number(b.id) - Number(a.id);
       }
     });
-  }, [leads, searchQuery, sortBy, sortDirection]);
+  }, [leads, debouncedSearchQuery, sortBy, sortDirection]);
 
   // Toggle sort direction
   const toggleSortDirection = () => {
@@ -172,7 +176,7 @@ export default function LeadListScreen({ navigation }: Props) {
       {filteredAndSortedLeads.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>
-            {searchQuery ? 'No leads match your search' : 'No leads available'}
+            {debouncedSearchQuery ? 'No leads match your search' : 'No leads available'}
           </Text>
         </View>
       ) : (
