@@ -5,7 +5,9 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation';
 import { useQuery } from '@tanstack/react-query';
 import { leadsApi } from '../api/leadsApi';
+import { formConfigApi } from '../api/formConfigApi';
 import { format } from 'date-fns';
+import { FormConfig } from '../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'LeadDetail'>;
 
@@ -34,6 +36,15 @@ export default function LeadDetailScreen({ route, navigation }: Props) {
     }
   });
 
+  // Fetch form configuration to know field labels
+  const { data: formConfig } = useQuery({
+    queryKey: ['form-config'],
+    queryFn: async () => {
+      const response = await formConfigApi.getFormConfig();
+      return response.data as FormConfig;
+    },
+  });
+
   // For debugging
   console.log('Component state:', { isLoading, isError, lead, errorMessage: error?.message });
 
@@ -52,6 +63,39 @@ export default function LeadDetailScreen({ route, navigation }: Props) {
       navigation.setOptions({ title: lead.name });
     }
   }, [lead, navigation]);
+
+  // Check if the lead has any custom fields
+  const hasCustomFields = React.useMemo(() => {
+    if (!lead || !formConfig) return false;
+    
+    // Check if any custom field from the form config exists in the lead data
+    return formConfig.fields.some(field => 
+      // Skip standard fields that are already displayed
+      !['name', 'email', 'phone', 'company', 'title', 'notes'].includes(field.key) && 
+      lead[field.key] !== undefined && 
+      lead[field.key] !== null && 
+      lead[field.key] !== ''
+    );
+  }, [lead, formConfig]);
+
+  // Get custom fields to display
+  const customFieldsToDisplay = React.useMemo(() => {
+    if (!lead || !formConfig) return [];
+    
+    return formConfig.fields
+      .filter(field => 
+        // Skip standard fields that are already displayed
+        !['name', 'email', 'phone', 'company', 'title', 'notes'].includes(field.key) && 
+        lead[field.key] !== undefined && 
+        lead[field.key] !== null && 
+        lead[field.key] !== ''
+      )
+      .map(field => ({
+        key: field.key,
+        label: field.label,
+        value: lead[field.key]
+      }));
+  }, [lead, formConfig]);
 
   // Show loading state
   if (isLoading) {
@@ -85,12 +129,13 @@ export default function LeadDetailScreen({ route, navigation }: Props) {
     return (
       <View style={styles.errorContainer}>
         <Text style={styles.errorTitle}>Lead not found</Text>
+        <Text style={styles.errorMessage}>The requested lead could not be found</Text>
         <Button 
           mode="contained" 
           onPress={() => navigation.goBack()} 
           style={styles.retryButton}
         >
-          Go Back
+          Back to List
         </Button>
       </View>
     );
@@ -137,6 +182,24 @@ export default function LeadDetailScreen({ route, navigation }: Props) {
           </View>
         </Card.Content>
       </Card>
+
+      {/* Custom Fields Card - Only shown if custom fields exist */}
+      {hasCustomFields && (
+        <Card style={styles.card}>
+          <Card.Title title="Custom Fields" />
+          <Card.Content>
+            {customFieldsToDisplay.map((field, index) => (
+              <React.Fragment key={field.key}>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>{field.label}:</Text>
+                  <Text style={styles.infoValue}>{field.value}</Text>
+                </View>
+                {index < customFieldsToDisplay.length - 1 && <Divider style={styles.divider} />}
+              </React.Fragment>
+            ))}
+          </Card.Content>
+        </Card>
+      )}
 
       {/* Tags Card */}
       <Card style={styles.card}>
