@@ -6,6 +6,7 @@ import { store, persistor } from './store';
 import Navigation from './navigation';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ActivityIndicator, View } from 'react-native';
+import React from 'react';
 
 export const queryClient = new QueryClient();
 
