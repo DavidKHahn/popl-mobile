@@ -10,18 +10,18 @@ This isn't about perfection — it’s about how you **think**.
 
 A lightweight mobile app (3 screens) for managing "leads":
 
-### 1. **Lead List Screen**
+### 1. **Lead List Screen** :white_check_mark:
 
 - Fetches and displays a list of leads from a mock API
 - Supports basic **search** and **sort** (by name or creation date)
 - Tapping a lead should navigate to its detail view
 
-### 2. **Lead Detail Screen**
+### 2. **Lead Detail Screen** :white_check_mark:
 
 - Displays all lead details (name, company, tags, etc.)
 - Use either navigation-passed data or fetch by ID (up to you)
 
-### 3. **New Lead Screen**
+### 3. **New Lead Screen** :white_check_mark:
 
 - Basic form to create a new lead (name, email, etc.)
 - Submits via a mock API (`POST /leads`)
@@ -82,17 +82,17 @@ This will serve from:
 
 If you're feeling ambitious, consider adding one or more of these:
 
-1. **🔧 Dynamic form support**
+1. **🔧 Dynamic form support** :white_check_mark:
 
    - Add a toggle at the top of the "New Lead" screen for "Default" vs "Custom"
    - Load custom field mappings from a mock `/form-config` API and append to the form dynamically
    - This reflects a real pattern in our production app
 
-2. **🧠 Improve loading/empty/error UI**
+2. **🧠 Improve loading/empty/error UI** :white_check_mark:
 
    - E.g. loading skeletons, "No results" states, graceful error fallback
 
-3. **🔍 Debounced search**
+3. **🔍 Debounced search** :white_check_mark:
 
    - Prevent over-rendering on every keystroke using `useDebounce` or `lodash.debounce`
 
@@ -100,11 +100,11 @@ If you're feeling ambitious, consider adding one or more of these:
 
    - Basic unit or component tests — not required, but a nice bonus
 
-5. **📦 Global app config or user state**
+5. **📦 Global app config or user state** :white_check_mark:
 
    - Introduce Redux or Zustand to manage a simple user session or settings
 
-6. **📶 Offline persistence**
+6. **📶 Offline persistence** :white_check_mark:
 
    - Use something like `AsyncStorage` or `react-query`’s persistence layer to survive refreshes or flight mode
 
