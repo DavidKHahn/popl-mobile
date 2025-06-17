@@ -6,12 +6,14 @@ import { store, persistor } from './store';
 import Navigation from './navigation';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ActivityIndicator, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import React from 'react';
 
 export const queryClient = new QueryClient();
 
 export default function App() {
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <Provider store={store}>
       <PersistGate 
         loading={
@@ -29,6 +31,7 @@ export default function App() {
           </QueryClientProvider>
         </SafeAreaProvider>
       </PersistGate>
-    </Provider>
+      </Provider>
+    </GestureHandlerRootView>
   );
 }
